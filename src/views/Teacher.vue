@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useUserStore } from '@/stores/user';
+import {onMounted, ref} from 'vue';
+import {useUserStore} from '@/stores/user';
 
 // Получение данных преподавателя из Pinia-хранилища
 const userStore = useUserStore();
@@ -25,8 +25,7 @@ const selectGroup = async (group) => {
   selectedGroup.value = { ...group, students: [] };
   try {
     const response = await fetch(`/api/groups/${group.id}/students`);
-    const students = await response.json();
-    selectedGroup.value.students = students;
+    selectedGroup.value.students = await response.json();
   } catch (error) {
     console.error('Ошибка при загрузке студентов группы:', error);
   }
