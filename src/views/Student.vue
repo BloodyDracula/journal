@@ -1,3 +1,36 @@
+<script setup>
+import { useUserStore } from '@/stores/user';
+import { ref, onMounted } from 'vue';
+
+// Использование Pinia-хранилища
+const userStore = useUserStore();
+
+// Имя студента
+const studentName = userStore.user.name;
+
+// Данные группы студента
+const group = ref({
+  name: '',
+  students: [],
+});
+
+// Загрузка информации о группе
+const loadGroup = async () => {
+  try {
+    // Пример API-запроса для получения информации о группе студента
+    const response = await fetch(`/api/student/${userStore.user.id}/group`);
+    const data = await response.json();
+    group.value.name = data.name;
+    group.value.students = data.students;
+  } catch (error) {
+    console.error('Ошибка при загрузке данных группы:', error);
+  }
+};
+
+// Загрузка данных при монтировании
+onMounted(loadGroup);
+</script>
+
 <template>
   <div class="student-page">
     <h1>Добро пожаловать, {{ studentName }}</h1>
@@ -22,44 +55,6 @@
     <p v-else>Список студентов пуст.</p>
   </div>
 </template>
-
-<script>
-import { useUserStore } from '@/stores/user';
-import {onMounted, ref} from "vue";
-
-export default {
-  setup() {
-    const userStore = useUserStore();
-
-    // Имя студента
-    const studentName = userStore.user.name;
-
-    // Данные группы студента
-    const group = ref({
-      name: '',
-      students: [],
-    });
-
-    // Загрузка информации о группе
-    const loadGroup = async () => {
-      try {
-        // Пример API-запроса для получения информации о группе студента
-        const response = await fetch(`/api/student/${userStore.user.id}/group`);
-        const data = await response.json();
-        group.value.name = data.name;
-        group.value.students = data.students;
-      } catch (error) {
-        console.error('Ошибка при загрузке данных группы:', error);
-      }
-    };
-
-    // Загрузка данных при монтировании
-    onMounted(loadGroup);
-
-    return { studentName, group };
-  },
-};
-</script>
 
 <style>
 .student-page {

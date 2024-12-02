@@ -1,9 +1,123 @@
+<script setup>
+import { ref, onMounted } from 'vue';
+
+// Управление отображением студентов и преподавателей
+const showStudents = ref(true);
+const showTeachers = ref(false);
+
+// Данные студентов и преподавателей
+const students = ref([]);
+const teachers = ref([]);
+
+// Управление модальным окном
+const isModalOpen = ref(false);
+const modalTitle = ref('');
+const form = ref({
+  id: null,
+  name: '',
+  group: '',
+  subject: '',
+});
+
+// Загрузка списка студентов
+const loadStudents = async () => {
+  try {
+    const response = await fetch('/api/admin/students');
+    students.value = await response.json();
+  } catch (error) {
+    console.error('Ошибка при загрузке студентов:', error);
+  }
+};
+
+// Загрузка списка преподавателей
+const loadTeachers = async () => {
+  try {
+    const response = await fetch('/api/admin/teachers');
+    teachers.value = await response.json();
+  } catch (error) {
+    console.error('Ошибка при загрузке преподавателей:', error);
+  }
+};
+
+// Открытие формы для редактирования или добавления студента
+const openStudentForm = (student = null) => {
+  isModalOpen.value = true;
+  modalTitle.value = student ? 'Редактировать студента' : 'Добавить студента';
+  form.value = student ? { ...student } : { id: null, name: '', group: '' };
+};
+
+// Открытие формы для редактирования или добавления преподавателя
+const openTeacherForm = (teacher = null) => {
+  isModalOpen.value = true;
+  modalTitle.value = teacher ? 'Редактировать преподавателя' : 'Добавить преподавателя';
+  form.value = teacher ? { ...teacher } : { id: null, name: '', subject: '' };
+};
+
+// Закрытие модального окна
+const closeModal = () => {
+  isModalOpen.value = false;
+  form.value = { id: null, name: '', group: '', subject: '' };
+};
+
+// Сохранение данных студента или преподавателя
+const handleSubmit = async () => {
+  try {
+    const endpoint = showStudents.value
+        ? '/api/admin/students'
+        : '/api/admin/teachers';
+
+    const method = form.value.id ? 'PUT' : 'POST';
+    const response = await fetch(endpoint, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form.value),
+    });
+
+    if (response.ok) {
+      closeModal();
+      if (showStudents.value) {
+        await loadStudents();
+      } else {
+        await loadTeachers();
+      }
+    }
+  } catch (error) {
+    console.error('Ошибка при сохранении:', error);
+  }
+};
+
+// Удаление студента
+const deleteStudent = async (id) => {
+  try {
+    await fetch(`/api/admin/students/${id}`, { method: 'DELETE' });
+    await loadStudents();
+  } catch (error) {
+    console.error('Ошибка при удалении студента:', error);
+  }
+};
+
+// Удаление преподавателя
+const deleteTeacher = async (id) => {
+  try {
+    await fetch(`/api/admin/teachers/${id}`, { method: 'DELETE' });
+    await loadTeachers();
+  } catch (error) {
+    console.error('Ошибка при удалении преподавателя:', error);
+  }
+};
+
+// Загрузка данных при монтировании
+onMounted(() => {
+  loadStudents();
+  loadTeachers();
+});
+</script>
+
 <template>
   <div class="admin-page">
-    <h1>Администраторская панель</h1>
-    <div class="controls">
-      <button @click="showStudents = true; showTeachers = false">Управление студентами</button>
-      <button @click="showTeachers = true; showStudents = false">Управление преподавателями</button>
+    <div>
+      <button @click="showStudents = true; showTeachers = false">Студенты</button>
+      <button @click="showStudents = false; showTeachers = true">Преподаватели</button>
     </div>
 
     <div v-if="showStudents">
@@ -22,7 +136,7 @@
           <td>{{ student.name }}</td>
           <td>{{ student.group }}</td>
           <td>
-            <button @click="editStudent(student)">Редактировать</button>
+            <button @click="openStudentForm(student)">Редактировать</button>
             <button @click="deleteStudent(student.id)">Удалить</button>
           </td>
         </tr>
@@ -46,7 +160,7 @@
           <td>{{ teacher.name }}</td>
           <td>{{ teacher.subject }}</td>
           <td>
-            <button @click="editTeacher(teacher)">Редактировать</button>
+            <button @click="openTeacherForm(teacher)">Редактировать</button>
             <button @click="deleteTeacher(teacher.id)">Удалить</button>
           </td>
         </tr>
@@ -54,169 +168,28 @@
       </table>
     </div>
 
-    <!-- Модальные формы -->
     <div v-if="isModalOpen" class="modal">
-      <div class="modal-content">
-        <h2>{{ modalTitle }}</h2>
-        <form @submit.prevent="handleSubmit">
-          <label for="name">Имя:</label>
-          <input v-model="form.name" type="text" required />
-
-          <div v-if="showStudents">
-            <label for="group">Группа:</label>
-            <input v-model="form.group" type="text" required />
-          </div>
-
-          <div v-if="showTeachers">
-            <label for="subject">Предмет:</label>
-            <input v-model="form.subject" type="text" required />
-          </div>
-
-          <button type="submit">Сохранить</button>
-          <button type="button" @click="closeModal">Отмена</button>
-        </form>
-      </div>
+      <h3>{{ modalTitle }}</h3>
+      <form @submit.prevent="handleSubmit">
+        <div>
+          <label>Имя:</label>
+          <input v-model="form.name" />
+        </div>
+        <div v-if="showStudents">
+          <label>Группа:</label>
+          <input v-model="form.group" />
+        </div>
+        <div v-if="showTeachers">
+          <label>Предмет:</label>
+          <input v-model="form.subject" />
+        </div>
+        <button type="submit">Сохранить</button>
+        <button type="button" @click="closeModal">Отмена</button>
+      </form>
     </div>
   </div>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      showStudents: true,
-      showTeachers: false,
-      students: [],
-      teachers: [],
-      isModalOpen: false,
-      modalTitle: '',
-      form: {
-        id: null,
-        name: '',
-        group: '',
-        subject: '',
-      },
-    };
-  },
-  methods: {
-    async loadStudents() {
-      try {
-        const response = await fetch('/api/admin/students');
-        this.students = await response.json();
-      } catch (error) {
-        console.error('Ошибка при загрузке студентов:', error);
-      }
-    },
-    async loadTeachers() {
-      try {
-        const response = await fetch('/api/admin/teachers');
-        this.teachers = await response.json();
-      } catch (error) {
-        console.error('Ошибка при загрузке преподавателей:', error);
-      }
-    },
-    openStudentForm(student = null) {
-      this.isModalOpen = true;
-      this.modalTitle = student ? 'Редактировать студента' : 'Добавить студента';
-      this.form = student ? { ...student } : { id: null, name: '', group: '' };
-    },
-    openTeacherForm(teacher = null) {
-      this.isModalOpen = true;
-      this.modalTitle = teacher ? 'Редактировать преподавателя' : 'Добавить преподавателя';
-      this.form = teacher ? { ...teacher } : { id: null, name: '', subject: '' };
-    },
-    closeModal() {
-      this.isModalOpen = false;
-      this.form = { id: null, name: '', group: '', subject: '' };
-    },
-    async handleSubmit() {
-      try {
-        const endpoint = this.showStudents
-            ? '/api/admin/students'
-            : '/api/admin/teachers';
-
-        const method = this.form.id ? 'PUT' : 'POST';
-        const response = await fetch(endpoint, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(this.form),
-        });
-
-        if (response.ok) {
-          this.closeModal();
-          if (this.showStudents) {
-            await this.loadStudents();
-          } else {
-            await this.loadTeachers();
-          }
-        }
-      } catch (error) {
-        console.error('Ошибка при сохранении:', error);
-      }
-    },
-    async deleteStudent(id) {
-      try {
-        await fetch(`/api/admin/students/${id}`, { method: 'DELETE' });
-        await this.loadStudents();
-      } catch (error) {
-        console.error('Ошибка при удалении студента:', error);
-      }
-    },
-    async deleteTeacher(id) {
-      try {
-        await fetch(`/api/admin/teachers/${id}`, { method: 'DELETE' });
-        await this.loadTeachers();
-      } catch (error) {
-        console.error('Ошибка при удалении преподавателя:', error);
-      }
-    },
-  },
-  mounted() {
-    this.loadStudents();
-    this.loadTeachers();
-  },
-};
-</script>
-
 <style>
-.admin-page {
-  max-width: 800px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-th, td {
-  border: 1px solid #ccc;
-  padding: 10px;
-  text-align: center;
-}
-
-.controls button {
-  margin: 10px;
-}
-
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.modal-content {
-  background: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  text-align: left;
-}
+/* Добавьте стили для оформления */
 </style>
