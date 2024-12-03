@@ -10,19 +10,33 @@ const username = ref('');
 const password = ref('');
 
 const handleLogin = async () => {
-  // Пример проверки логина
-  if (username.value === 'admin' && password.value === 'admin123') {
-    // Устанавливаем данные пользователя в хранилище
-    userStore.setUser({ name: 'Admin', role: 'admin' }, 'adminToken');
+  try {
+    const response = await fetch('/api/login.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username.value, password: password.value }),
+    });
 
-    // Перенаправляем в зависимости от роли
-    if (userStore.user.role === 'admin') {
-      await router.push('/admin');
+    const data = await response.json();
+
+    if (data.error) {
+      alert(data.error); // Вывод ошибки, если логин или пароль неверны
+    } else {
+      userStore.setUser({ name: data.name, role: data.role }, 'authToken');
+      if (data.role === 'admin') {
+        await router.push('/admin');
+      } else if (data.role === 'teacher') {
+        await router.push('/teacher');
+      } else if (data.role === 'student') {
+        await router.push('/student');
+      }
     }
-  } else {
-    alert('Неверный логин или пароль');
+  } catch (error) {
+    console.error('Ошибка при авторизации:', error);
+    alert('Произошла ошибка. Попробуйте позже.');
   }
 };
+
 </script>
 
 <template>
