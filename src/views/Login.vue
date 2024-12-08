@@ -11,32 +11,42 @@ const password = ref('');
 
 const handleLogin = async () => {
   try {
-    const response = await fetch('/api/login.php', {
+    // Отправляем запрос на авторизацию
+    const response = await fetch('http://localhost:3000/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username.value, password: password.value }),
+      body: JSON.stringify({ email: username.value, password: password.value }),
     });
 
     const data = await response.json();
 
-    if (data.error) {
-      alert(data.error); // Вывод ошибки, если логин или пароль неверны
-    } else {
-      userStore.setUser({ name: data.name, role: data.role }, 'authToken');
-      if (data.role === 'admin') {
-        await router.push('/admin');
-      } else if (data.role === 'teacher') {
-        await router.push('/teacher');
-      } else if (data.role === 'student') {
-        await router.push('/student');
+    if (response.ok) {
+      // Сохраняем данные пользователя и токен в хранилище
+      userStore.setUser({ name: data.name, role: data.role }, data.token);
+
+      // Переход на страницу в зависимости от роли
+      switch (data.role) {
+        case 'admin':
+          await router.push('/admin');
+          break;
+        case 'teacher':
+          await router.push('/teacher');
+          break;
+        case 'student':
+          await router.push('/student');
+          break;
+        default:
+          alert('Неизвестная роль пользователя');
       }
+    } else {
+      // Обработка ошибок
+      alert(data.error || 'Неверный логин или пароль');
     }
   } catch (error) {
     console.error('Ошибка при авторизации:', error);
     alert('Произошла ошибка. Попробуйте позже.');
   }
 };
-
 </script>
 
 <template>
